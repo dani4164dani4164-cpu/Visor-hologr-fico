@@ -7,7 +7,7 @@ en el selector de arriba.
 
 - **Dos estados**: *trabajando* (azul ↔ morado) y *en reposo* (gris plateado), con transición suave.
 - **Gestos**: tocar = cambiar de estado · arrastrar = girar e inclinar · pellizcar = acercar/alejar.
-- **Controles**: velocidad, cantidad de partículas, estado y "Restablecer vista".
+- **Controles**: velocidad, cantidad de partículas, estado, "Restablecer vista" y "Exportar".
   La app recuerda la última velocidad, partículas, estado y escena elegidos.
 - **Funciona sin conexión** una vez abierta por primera vez.
 - HTML, CSS y JavaScript puros (módulos ES). Sin frameworks, sin npm, sin compilar.
@@ -55,7 +55,9 @@ conexión, descargará la versión nueva y verás el aviso
 ```
 index.html                 página, selector de escenas y panel de controles
 css/estilos.css            estilos (móvil primero, safe-area, horizontal)
-js/app.js                  estado, controles, gestos, bucle, preferencias, service worker
+js/app.js                  montaje de escenas, controles, preferencias, service worker
+js/arnes.js                estado por cuadro, gestos y bucle (compartido con lo exportado)
+js/exportar.js             Exportar: arma los archivos .html / .js y los entrega
 js/escenas/registro.js     lista de escenas disponibles
 js/escenas/indicador.js    escena "Indicador" (canvas 2D)
 js/escenas/indicador-3d.js escena "Indicador 3D" (three.js / WebGL 2)
@@ -87,6 +89,44 @@ prototipo/                 prototipos originales (no se tocan)
   copia de `js/escenas/indicador-3d.js`, que libera además el contexto WebGL y la
   geometría compartida del halo (ver abajo). Si cambias el diseño en el prototipo,
   copia el cambio a esa escena.
+
+## Exportar
+
+El botón **Exportar** del panel guarda la escena que estás viendo (Indicador o
+Indicador 3D) como archivo, para usarla en otros proyectos:
+
+| Opción | Archivo | Qué es |
+|---|---|---|
+| **Página independiente (.html)** | `indicador-2d.html`, `indicador-3d.html` | Un solo archivo que muestra la escena a pantalla completa, con los mismos gestos que la app (tocar, arrastrar, pellizcar o rueda) y sin el panel de controles. |
+| **Módulo de escena (.js)** | `indicador-2d.js`, `indicador-3d.js` | El archivo de la escena tal cual, con un encabezado que explica el contrato, qué campos de `S` usa y un ejemplo listo para copiar. |
+
+**Cómo se guarda el archivo**
+- En celular y tableta se abre la hoja de **Compartir** del sistema: elige *Guardar en Archivos*,
+  *Drive*, o mándalo por correo o mensaje.
+- En computadora se descarga normalmente.
+- Si el dispositivo no deja ni compartir ni descargar (por ejemplo, la app instalada en un
+  iPhone/iPad antiguo), aparece un panel con el código y un botón **Copiar**: pégalo en un
+  archivo nuevo con el nombre que se indica.
+- Al terminar aparece el aviso **"Archivo listo"**.
+
+**La página exportada**
+- Empieza con la velocidad, las partículas y el estado que tenías al exportar. Están en un
+  bloque `CONFIG` al inicio del script, con comentarios, para cambiarlos a mano. También tiene
+  `zoom`, `gestos` (ponlo en `false` para un indicador decorativo) y `fondo`.
+- Para incrustarla en otra página, copia el archivo junto a ella y usa:
+
+  ```html
+  <iframe src="indicador-3d.html" title="Indicador 3D" width="400" height="400"
+          style="border:0;background:#07070d"></iframe>
+  ```
+
+  El indicador se adapta al tamaño del iframe.
+- La versión 3D descarga three.js de la CDN (la misma versión que usa la app), así que necesita
+  internet la primera vez que se abre. Si no puede, muestra un aviso en lugar de quedar en negro.
+
+**Siempre coincide con la app**: el código no es una copia hecha a mano. Al exportar, la app lee
+los archivos reales de la escena (`js/escenas/…`) y del arnés (`js/arnes.js`, el mismo que usa la
+app para los gestos y el bucle). Los toma de la caché, así que **exportar funciona sin conexión**.
 
 ## Agregar una escena nueva
 
@@ -177,13 +217,17 @@ y el lápiz ✏️ para editar), sin computadora.
    - Si usas `THREE.Sprite`, desecha también `sprite.geometry`: three.js la comparte entre
      todos los sprites y retiene al renderer si no se desecha.
 
-2. **Regístrala** en `js/escenas/registro.js` agregando una línea a la lista. Si usa three.js,
-   agrega `requiere: ['webgl2']`: en equipos sin WebGL 2 la app avisará y volverá a "Indicador"
-   sin descargar nada.
+2. **Regístrala** en `js/escenas/registro.js` agregando una línea a la lista: `archivo` es el
+   nombre del archivo de la escena y `exportar` el nombre base de los archivos que genera
+   **Exportar**. Si usa three.js, agrega `requiere: ['webgl2']`: en equipos sin WebGL 2 la app
+   avisará y volverá a "Indicador" sin descargar nada.
 
    ```js
-   { id: 'anillos-3d', nombre: 'Anillos 3D', cargar: () => import('./anillos-3d.js'), requiere: ['webgl2'] },
+   { id: 'anillos-3d', nombre: 'Anillos 3D', archivo: 'anillos-3d.js', exportar: 'anillos-3d', requiere: ['webgl2'] },
    ```
+
+   Para que la escena se pueda exportar, debe tener un único `export default` e importar solo
+   librerías del import map (como `'three'`), no otros archivos locales.
 
 3. **Agrégala a la caché sin conexión**: en `service-worker.js`, añade
    `'./js/escenas/anillos-3d.js',` a la lista `ARCHIVOS`. three.js ya se guarda al instalar

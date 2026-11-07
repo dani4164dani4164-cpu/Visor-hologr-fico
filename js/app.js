@@ -3,7 +3,9 @@
    El dibujo vive en las escenas (js/escenas/); este archivo solo
    mantiene el estado compartido y se lo entrega a la escena activa.
    ============================================================ */
-import { escenas, buscarEscena } from './escenas/registro.js';
+import { escenas, buscarEscena, cargarEscena } from './escenas/registro.js';
+import { avanzar, instalarGestos, iniciarBucle } from './arnes.js';
+import { instalarExportar } from './exportar.js';
 
 /* ---------- Preferencias guardadas (localStorage con try/catch) ---------- */
 const CLAVE = 'visor-holografico:prefs';
@@ -71,7 +73,7 @@ async function montarEscena(id){
   let nueva = null;
   try {
     if (falta) throw new Error(`Falta ${falta}`);
-    const mod = await entrada.cargar();
+    const mod = await cargarEscena(entrada);
     if (n !== peticion) return;                 // el usuario eligió otra mientras cargaba
     nueva = mod.default.crear(stage, S);
     if (escena) escena.destruir();
@@ -130,48 +132,21 @@ den.oninput = e => { setParticles(+e.target.value); guardarPrefs(); };
 
 setSpeed(S.speed); setParticles(S.particles); setActive(S.active);
 
-/* ---------- Gestos: tocar, arrastrar, pellizcar ---------- */
-const ptrs = new Map(); let down = null, pinch0 = null, hintHidden = false;
+/* ---------- Exportar la escena activa ---------- */
+instalarExportar({
+  boton: $('exportar'), menu: $('menuExportar'), panel: $('panelCodigo'),
+  escenaActual: () => escena ? buscarEscena(escenaId) : null,
+  estado: S, avisar: mostrarAviso
+});
+
+/* ---------- Gestos (js/arnes.js): tocar, arrastrar, pellizcar ---------- */
+let hintHidden = false;
 function hideHint(){ if (!hintHidden){ hintHidden = true; $('hint').style.opacity = 0; } }
-stage.addEventListener('pointerdown', e => {
-  stage.setPointerCapture(e.pointerId);
-  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (ptrs.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false };
-  if (ptrs.size === 2){ const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: S.zoom }; if (down) down.moved = true; }
-});
-stage.addEventListener('pointermove', e => {
-  const p = ptrs.get(e.pointerId); if (!p) return;
-  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
-  if (ptrs.size === 2 && pinch0){
-    const [a, b] = [...ptrs.values()];
-    S.zoom = Math.max(0.5, Math.min(2.5, pinch0.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch0.d)); hideHint(); return;
-  }
-  if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) down.moved = true;
-  if (down && down.moved){ S.rot += dx * 0.008; S.rotVel = dx * 0.008; S.tilt = Math.max(-0.3, Math.min(0.7, S.tilt + dy * 0.004)); hideHint(); }
-});
-function up(e){
-  ptrs.delete(e.pointerId);
-  if (ptrs.size < 2) pinch0 = null;
-  if (ptrs.size === 0 && down){
-    if (!down.moved && performance.now() - down.t < 300){ setActive(!S.active); hideHint(); }
-    down = null;
-  }
-}
-stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
-stage.addEventListener('wheel', e => { e.preventDefault(); S.zoom = Math.max(0.5, Math.min(2.5, S.zoom * Math.exp(-e.deltaY * 0.001))); }, { passive: false });
-stage.addEventListener('contextmenu', e => e.preventDefault());
+const gestos = instalarGestos(stage, S, { alTocar: () => setActive(!S.active), alInteractuar: hideHint });
 
-// iOS Safari: bloquea el zoom del navegador por pellizco y el desplazamiento de la página
-for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, e => e.preventDefault());
-document.addEventListener('touchmove', e => { if (e.touches.length > 1 || e.target.closest('#stage')) e.preventDefault(); }, { passive: false });
-
-/* ---------- Bucle (se pausa cuando la pestaña no está visible) ---------- */
-let last = performance.now(), raf = 0;
-function loop(t){
-  const dT = Math.min(50, Math.max(0, t - last)); last = t;
-  S.energy += ((S.active ? 1 : 0) - S.energy) * (1 - Math.pow(0.97, dT / 16.7));
-  S.T += dT * S.speed * (0.2 + 0.8 * S.energy);
-  if (!down){ S.rot += S.rotVel; S.rotVel *= Math.pow(0.94, dT / 16.7); }
+/* ---------- Bucle (js/arnes.js; se pausa cuando la pestaña no está visible) ---------- */
+iniciarBucle((t, dT) => {
+  avanzar(S, dT, gestos.arrastrando());
   if (escena){
     try { escena.dibujar(t, dT); }
     catch (err){                                  // un fallo al dibujar no detiene la app
@@ -183,14 +158,9 @@ function loop(t){
       volverAlRespaldo(fallida);
     }
   }
-  raf = requestAnimationFrame(loop);
-}
-function iniciar(){ if (!raf){ last = performance.now(); raf = requestAnimationFrame(loop); } }
-function detener(){ if (raf){ cancelAnimationFrame(raf); raf = 0; } }
-document.addEventListener('visibilitychange', () => document.hidden ? detener() : iniciar());
+});
 
 montarEscena(prefs.escena);
-if (!document.hidden) iniciar();
 
 /* ---------- Service worker (sin conexión + actualizaciones) ---------- */
 if ('serviceWorker' in navigator && location.protocol !== 'file:'){
