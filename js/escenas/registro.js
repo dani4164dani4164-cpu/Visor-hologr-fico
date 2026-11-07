@@ -48,6 +48,7 @@
 export const escenas = [
   { id: 'indicador',    nombre: 'Indicador',    archivo: 'indicador.js',    exportar: 'indicador-2d' },
   { id: 'indicador-3d', nombre: 'Indicador 3D', archivo: 'indicador-3d.js', exportar: 'indicador-3d', requiere: ['webgl2'] },
+  { id: 'agios',        nombre: 'Agios',        archivo: 'agios.js',        exportar: 'agios',        requiere: ['webgl2'] },
 ];
 
 /* URL absoluta del archivo de una escena (sirve igual bajo /<nombre-del-repo>/) */
