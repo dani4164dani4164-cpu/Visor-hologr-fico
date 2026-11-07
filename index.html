@@ -56,11 +56,38 @@
     <input id="den" type="range" min="0" max="160" step="10" value="80">
     <output id="denOut" for="den">80</output>
   </div>
-  <div class="row">
+  <div class="row botones">
     <button id="toggle" class="on" type="button">Trabajando</button>
     <button id="reset" type="button">Restablecer vista</button>
+    <button id="exportar" type="button" aria-haspopup="dialog">Exportar</button>
   </div>
 </div>
+
+<!-- Menú «Exportar» -->
+<dialog id="menuExportar" class="hoja" aria-labelledby="menuExportarTitulo">
+  <div class="hoja-cuerpo">
+    <h2 id="menuExportarTitulo">Exportar «<span data-nombre></span>»</h2>
+    <p class="hoja-nota" data-config></p>
+    <button type="button" data-formato="html">Página independiente (.html)
+      <small>Un solo archivo que muestra la escena a pantalla completa · <b></b></small></button>
+    <button type="button" data-formato="js">Módulo de escena (.js)
+      <small>Para usar la escena en otro proyecto · <b></b></small></button>
+    <button type="button" class="secundario" data-cancelar>Cancelar</button>
+  </div>
+</dialog>
+
+<!-- Último recurso si no se puede compartir ni descargar: el código para copiar -->
+<dialog id="panelCodigo" class="hoja hoja-codigo" aria-labelledby="panelCodigoTitulo">
+  <div class="hoja-cuerpo">
+    <h2 id="panelCodigoTitulo"><span data-nombre></span></h2>
+    <p class="hoja-nota">Este dispositivo no permitió guardar el archivo. Copia el código y pégalo en un archivo nuevo con este nombre.</p>
+    <textarea readonly spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Código del archivo"></textarea>
+    <div class="row">
+      <button type="button" class="on" data-copiar autofocus>Copiar</button>
+      <button type="button" data-cerrar>Cerrar</button>
+    </div>
+  </div>
+</dialog>
 
 <noscript><p class="noscript">Esta app necesita JavaScript.</p></noscript>
 </body>

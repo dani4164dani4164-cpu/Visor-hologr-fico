@@ -57,6 +57,41 @@ output{font:12px ui-monospace,monospace;width:40px;text-align:right}
 button{flex:1;background:transparent;color:var(--txt);border:1px solid #534AB7;border-radius:10px;padding:11px 10px;font-size:14px;cursor:pointer;font-family:inherit}
 button:active{background:#17143a}
 button.on{background:#1d1950;border-color:var(--acc)}
+/* Fila de botones: cada uno toma el ancho de su texto y, si no caben, pasan a otra línea */
+.row.botones{flex-wrap:wrap}
+.row.botones button{flex:1 1 auto;white-space:nowrap}
+
+/* Hojas (menú Exportar y panel de código) */
+dialog.hoja{
+  border:1px solid var(--line);border-radius:16px;background:#0d0c1c;color:var(--txt);
+  padding:0;width:min(440px,calc(100vw - 24px));
+  max-height:calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow:auto;overscroll-behavior:contain;box-shadow:0 12px 40px #000a;
+}
+dialog.hoja::backdrop{background:#030308b3}
+dialog.hoja[open]{animation:hoja-entra .2s ease-out}
+@keyframes hoja-entra{from{opacity:0;transform:translateY(12px)}}
+.hoja-cuerpo{display:grid;gap:10px;padding:16px}
+.hoja h2{font-size:15px;font-weight:600;margin:0;letter-spacing:.02em;overflow-wrap:anywhere}
+.hoja-nota{font-size:12px;color:var(--dim);margin:0 0 4px}
+.hoja button{display:grid;gap:3px;text-align:left;line-height:1.3}
+.hoja button small{font-size:11.5px;color:var(--dim)}
+.hoja button small b{font-weight:400;font-family:ui-monospace,monospace}
+.hoja button.secundario{text-align:center;border-color:var(--line)}
+.hoja .row button{text-align:center}
+.hoja-codigo{width:min(760px,calc(100vw - 24px))}
+.hoja-codigo textarea{
+  width:100%;height:min(52dvh,460px);resize:none;
+  background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:10px;
+  padding:10px;font:11px/1.45 ui-monospace,monospace;white-space:pre;overflow:auto;
+  -webkit-user-select:text;user-select:text;touch-action:auto;
+}
+.hoja-codigo textarea:focus{outline:none;border-color:var(--acc)}
+.hoja button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+/* Celular en vertical: el menú aparece abajo, cerca del pulgar */
+@media (max-width:600px) and (orientation:portrait){
+  dialog.hoja{margin-bottom:calc(env(safe-area-inset-bottom) + 12px)}
+}
 
 /* Aviso de actualización disponible */
 .aviso{

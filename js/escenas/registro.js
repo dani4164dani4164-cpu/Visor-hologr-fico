@@ -1,8 +1,8 @@
 /* ============================================================
    Registro de escenas
    ------------------------------------------------------------
-   Cada entrada describe una escena y cómo cargarla. La carga es
-   diferida (import dinámico): una escena pesada, por ejemplo con
+   Cada entrada describe una escena y en qué archivo está. La carga
+   es diferida (import dinámico): una escena pesada, por ejemplo con
    three.js, no se descarga hasta que se elige en el selector.
 
    Un módulo de escena exporta por defecto un objeto:
@@ -32,7 +32,11 @@
 
    Campos de cada entrada:
      id, nombre  identificador y texto del selector
-     cargar      función que importa el módulo de la escena
+     archivo     archivo de la escena en esta carpeta. La app lo
+                 importa al elegirla, y «Exportar» lee su código para
+                 que el archivo exportado coincida con lo que se ve.
+     exportar    nombre base de los archivos exportados
+                 (p. ej. 'indicador-2d' → indicador-2d.html / .js)
      requiere    (opcional) lista de capacidades: 'webgl2'. Si el
                  dispositivo no las tiene, la app avisa y vuelve a la
                  primera escena sin descargar nada.
@@ -42,9 +46,17 @@
    ============================================================ */
 
 export const escenas = [
-  { id: 'indicador', nombre: 'Indicador', cargar: () => import('./indicador.js') },
-  { id: 'indicador-3d', nombre: 'Indicador 3D', cargar: () => import('./indicador-3d.js'), requiere: ['webgl2'] },
+  { id: 'indicador',    nombre: 'Indicador',    archivo: 'indicador.js',    exportar: 'indicador-2d' },
+  { id: 'indicador-3d', nombre: 'Indicador 3D', archivo: 'indicador-3d.js', exportar: 'indicador-3d', requiere: ['webgl2'] },
 ];
+
+/* URL absoluta del archivo de una escena (sirve igual bajo /<nombre-del-repo>/) */
+export function urlEscena(entrada){
+  return new URL(entrada.archivo, import.meta.url).href;
+}
+export function cargarEscena(entrada){
+  return import(urlEscena(entrada));
+}
 
 export function buscarEscena(id){
   return escenas.find(e => e.id === id) || escenas[0];
