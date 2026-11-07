@@ -1,0 +1,41 @@
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # permite publicar a mano desde la pestaña Actions
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar sitio
+        run: |
+          mkdir _site
+          cp -r index.html manifest.webmanifest service-worker.js css js iconos prototipo _site/
+          # Cada despliegue tiene su propia versión de caché: las actualizaciones se aplican solas
+          sed -i "s/const BUILD = 'dev';/const BUILD = '${GITHUB_SHA::7}';/" _site/service-worker.js
+          grep -q "const BUILD = '${GITHUB_SHA::7}';" _site/service-worker.js
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: despliegue
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#07070d">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Indicador holográfico animado con anillos, pistas de circuito y partículas.">
+<title>Visor holográfico</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="iconos/icono.svg" type="image/svg+xml">
+<link rel="icon" href="iconos/icono-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Visor">
+
+<link rel="stylesheet" href="css/estilos.css">
+
+<!-- Mapa de importación: las escenas 3D futuras pueden hacer
+     `import * as THREE from 'three'` y se cargará desde la CDN.
+     No se descarga nada hasta que una escena lo importe. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<header>
+  <h1>Visor holográfico</h1>
+  <select id="escena" aria-label="Escena"></select>
+  <span id="estado">trabajando</span>
+</header>
+
+<main id="stage" aria-label="Escena interactiva">
+  <!-- La escena activa inserta aquí sus propios elementos (canvas, etc.) -->
+  <div id="hint">Toca para cambiar de estado · arrastra para girar · pellizca para acercar</div>
+</main>
+
+<div class="panel">
+  <div class="row">
+    <label for="vel">Velocidad</label>
+    <input id="vel" type="range" min="0.2" max="2" step="0.05" value="0.85">
+    <output id="velOut" for="vel">0.85</output>
+  </div>
+  <div class="row">
+    <label for="den">Partículas</label>
+    <input id="den" type="range" min="0" max="160" step="10" value="80">
+    <output id="denOut" for="den">80</output>
+  </div>
+  <div class="row">
+    <button id="toggle" class="on" type="button">Trabajando</button>
+    <button id="reset" type="button">Restablecer vista</button>
+  </div>
+</div>
+
+<noscript><p class="noscript">Esta app necesita JavaScript.</p></noscript>
+</body>
+</html>
