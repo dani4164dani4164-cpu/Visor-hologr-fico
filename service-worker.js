@@ -7,7 +7,7 @@
    - BUILD lo reemplaza automáticamente el workflow de GitHub Pages
      con el commit publicado, así cada despliegue se aplica solo.
    ============================================================ */
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const BUILD = 'dev';
 const CACHE = `visor-${VERSION}-${BUILD}`;
 const CACHE_CDN = 'visor-cdn-v1';   // librerías externas (p. ej. three.js) usadas por escenas
@@ -24,6 +24,7 @@ const ARCHIVOS = [
   './js/escenas/registro.js',
   './js/escenas/indicador.js',
   './js/escenas/indicador-3d.js',
+  './js/escenas/agios.js',
   './iconos/icono.svg',
   './iconos/icono-192.png',
   './iconos/icono-512.png',
