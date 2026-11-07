@@ -65,7 +65,14 @@ button.on{background:#1d1950;border-color:var(--acc)}
   background:#1d1950;border:1px solid var(--acc);color:var(--txt);
   border-radius:10px;padding:10px 14px;font-size:13px;z-index:10;
   box-shadow:0 6px 24px #0008;
+  width:max-content;max-width:calc(100% - 32px);text-align:center;
 }
+/* Aviso breve (p. ej. escena no compatible): arriba, sin bloquear toques */
+.aviso:not(.aviso-actualizar){
+  top:calc(env(safe-area-inset-top) + 56px);bottom:auto;
+  pointer-events:none;animation:aviso-entra .25s ease-out;
+}
+@keyframes aviso-entra{from{opacity:0;transform:translate(-50%,-6px)}}
 
 .noscript{padding:16px;text-align:center;color:var(--dim)}
 

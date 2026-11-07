@@ -42,25 +42,71 @@ let escena = null, escenaId = null, peticion = 0;
 
 for (const e of escenas) selector.add(new Option(e.nombre, e.id));
 
+/* Capacidades que una escena puede pedir con `requiere` en el registro.
+   three.js (r163 en adelante) necesita WebGL 2. */
+const capacidades = {
+  webgl2(){
+    try {
+      const gl = document.createElement('canvas').getContext('webgl2');
+      if (!gl) return false;
+      gl.getExtension('WEBGL_lose_context')?.loseContext();   // libera el contexto de prueba
+      return true;
+    } catch { return false; }
+  }
+};
+const nombresCapacidad = { webgl2: 'WebGL 2' };
+const capacidadMemo = {};
+function capacidadFaltante(entrada){
+  return (entrada.requiere || []).find(c => !(capacidadMemo[c] ??= !!capacidades[c]?.()));
+}
+
+const respaldo = escenas[0];   // «Indicador»: canvas 2D, funciona en todos lados
+
 async function montarEscena(id){
   const entrada = buscarEscena(id);
   const n = ++peticion;
   selector.value = entrada.id;
+  const previos = new Set(stage.children);
+  const falta = capacidadFaltante(entrada);
+  let nueva = null;
   try {
+    if (falta) throw new Error(`Falta ${falta}`);
     const mod = await entrada.cargar();
     if (n !== peticion) return;                 // el usuario eligió otra mientras cargaba
-    const nueva = mod.default.crear(stage, S);
+    nueva = mod.default.crear(stage, S);
     if (escena) escena.destruir();
     escena = nueva; escenaId = entrada.id;
     layout();
     guardarPrefs();
   } catch (err) {
-    console.error('No se pudo cargar la escena', entrada.id, err);
-    estado.textContent = 'error al cargar';
-    if (escenaId) selector.value = escenaId;
+    console.warn('No se pudo iniciar la escena', entrada.id, err);
+    if (n !== peticion) return;                 // ya se eligió otra; esta no llegó a crear nada
+    // Libera lo que la escena alcanzó a crear antes de fallar
+    if (nueva && nueva !== escena) try { nueva.destruir(); } catch {}
+    for (const el of [...stage.children]) if (!previos.has(el)) el.remove();
+    mostrarAviso(falta
+      ? `«${entrada.nombre}» necesita ${nombresCapacidad[falta] || falta}, que este dispositivo no tiene. Se muestra «${respaldo.nombre}».`
+      : `No se pudo iniciar «${entrada.nombre}». Se muestra «${respaldo.nombre}».`);
+    volverAlRespaldo(entrada.id);
   }
 }
+function volverAlRespaldo(fallida){
+  if (escenaId === respaldo.id) selector.value = respaldo.id;       // ya estaba en «Indicador»
+  else if (fallida !== respaldo.id) montarEscena(respaldo.id);
+}
 selector.addEventListener('change', () => montarEscena(selector.value));
+
+/* ---------- Avisos breves ---------- */
+let avisoTimer = 0;
+function mostrarAviso(texto, ms = 4500){
+  document.querySelector('.aviso:not(.aviso-actualizar)')?.remove();
+  const aviso = document.createElement('div');
+  aviso.className = 'aviso'; aviso.setAttribute('role', 'status');
+  aviso.textContent = texto;
+  document.body.append(aviso);
+  clearTimeout(avisoTimer);
+  avisoTimer = setTimeout(() => aviso.remove(), ms);
+}
 
 function layout(){
   const r = stage.getBoundingClientRect();
@@ -126,7 +172,17 @@ function loop(t){
   S.energy += ((S.active ? 1 : 0) - S.energy) * (1 - Math.pow(0.97, dT / 16.7));
   S.T += dT * S.speed * (0.2 + 0.8 * S.energy);
   if (!down){ S.rot += S.rotVel; S.rotVel *= Math.pow(0.94, dT / 16.7); }
-  if (escena) escena.dibujar(t, dT);
+  if (escena){
+    try { escena.dibujar(t, dT); }
+    catch (err){                                  // un fallo al dibujar no detiene la app
+      console.error('Error al dibujar la escena', escenaId, err);
+      const fallida = escenaId;
+      try { escena.destruir(); } catch {}
+      escena = null; escenaId = null;
+      mostrarAviso(`Falló «${buscarEscena(fallida).nombre}». Se muestra «${respaldo.nombre}».`);
+      volverAlRespaldo(fallida);
+    }
+  }
   raf = requestAnimationFrame(loop);
 }
 function iniciar(){ if (!raf){ last = performance.now(); raf = requestAnimationFrame(loop); } }
@@ -142,9 +198,9 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:'){
   navigator.serviceWorker.register('./service-worker.js').catch(err => console.warn('Service worker no registrado:', err));
   // Cuando una versión nueva toma el control, ofrece recargar (no se interrumpe al usuario).
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!habiaControlador || document.querySelector('.aviso')) return;
+    if (!habiaControlador || document.querySelector('.aviso-actualizar')) return;
     const aviso = document.createElement('button');
-    aviso.className = 'aviso'; aviso.type = 'button';
+    aviso.className = 'aviso aviso-actualizar'; aviso.type = 'button';
     aviso.textContent = 'Nueva versión lista · toca para actualizar';
     aviso.onclick = () => location.reload();
     document.body.append(aviso);

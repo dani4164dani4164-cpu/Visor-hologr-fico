@@ -2,7 +2,8 @@
 
 Web app instalable (PWA) que muestra un **indicador animado**: anillos tipo
 giroscopio, pistas de circuito con pulsos, partículas, marcas en el borde, arco
-de barrido y un núcleo que pulsa.
+de barrido y un núcleo que pulsa. Tiene dos escenas, en 2D y en 3D, que se eligen
+en el selector de arriba.
 
 - **Dos estados**: *trabajando* (azul ↔ morado) y *en reposo* (gris plateado), con transición suave.
 - **Gestos**: tocar = cambiar de estado · arrastrar = girar e inclinar · pellizcar = acercar/alejar.
@@ -57,12 +58,35 @@ css/estilos.css            estilos (móvil primero, safe-area, horizontal)
 js/app.js                  estado, controles, gestos, bucle, preferencias, service worker
 js/escenas/registro.js     lista de escenas disponibles
 js/escenas/indicador.js    escena "Indicador" (canvas 2D)
+js/escenas/indicador-3d.js escena "Indicador 3D" (three.js / WebGL 2)
 manifest.webmanifest       datos de instalación de la PWA
 service-worker.js          caché para uso sin conexión
 iconos/                    íconos (SVG y PNG, normales y maskable)
 .github/workflows/pages.yml  publicación automática en GitHub Pages
-prototipo/                 prototipo original (no se toca)
+prototipo/                 prototipos originales (no se tocan)
 ```
+
+## Escenas
+
+| Escena | Tecnología | Qué muestra |
+|---|---|---|
+| **Indicador** | Canvas 2D | El indicador original, con vista previa a 48 px en la esquina. Funciona en cualquier dispositivo. |
+| **Indicador 3D** | three.js (WebGL 2) | Núcleo con malla geodésica y halo, esfera de circuitos con pulsos, giroscopio de 4 anillos anidados, anillo escáner orbitando y partículas que brotan en espiral. |
+
+- Las dos responden igual a los gestos (tocar, arrastrar, pellizcar), a los controles
+  de velocidad y partículas y al cambio de estado (azul↔morado / gris plateado).
+- La app recuerda la última escena elegida.
+- **Sin WebGL 2** (algunos equipos viejos o con la aceleración gráfica desactivada):
+  al elegir "Indicador 3D" aparece un aviso breve y la app vuelve a "Indicador".
+  Lo mismo pasa si una escena falla al iniciar o al dibujar: la app no se rompe.
+- **Sin conexión**: three.js se descarga y se guarda al instalar la app, así la escena 3D
+  funciona sin internet aunque nunca la hayas abierto en línea.
+- Cambiar de escena muchas veces no acumula canvas ni memoria: cada escena libera
+  todo en `destruir()`, incluido el contexto WebGL.
+- `prototipo/indicador-3d/` es el banco de pruebas de la escena 3D. La app usa la
+  copia de `js/escenas/indicador-3d.js`, que libera además el contexto WebGL y la
+  geometría compartida del halo (ver abajo). Si cambias el diseño en el prototipo,
+  copia el cambio a esa escena.
 
 ## Agregar una escena nueva
 
@@ -135,21 +159,37 @@ y el lápiz ✏️ para editar), sin computadora.
            material.color.setHSL((250 + 25 * Math.sin(t * 0.00035)) / 360, 0.1 + 0.75 * S.energy, 0.62);
            renderer.render(escena, camara);
          },
-         destruir() { renderer.dispose(); material.dispose(); anillo.geometry.dispose(); renderer.domElement.remove(); }
+         destruir() {
+           material.dispose(); anillo.geometry.dispose();
+           renderer.dispose();
+           renderer.forceContextLoss();          // dispose() no libera el contexto WebGL
+           renderer.domElement.remove();
+         }
        };
      }
    };
    ```
 
-2. **Regístrala** en `js/escenas/registro.js` agregando una línea a la lista:
+   **Para que `destruir()` libere todo en escenas three.js:**
+   - Llama `dispose()` en cada geometría, material y textura que crees.
+   - Llama `renderer.dispose()` **y** `renderer.forceContextLoss()`; sin lo segundo, cada cambio
+     de escena deja un contexto WebGL vivo y, tras unos 16, el navegador empieza a tirar contextos.
+   - Si usas `THREE.Sprite`, desecha también `sprite.geometry`: three.js la comparte entre
+     todos los sprites y retiene al renderer si no se desecha.
+
+2. **Regístrala** en `js/escenas/registro.js` agregando una línea a la lista. Si usa three.js,
+   agrega `requiere: ['webgl2']`: en equipos sin WebGL 2 la app avisará y volverá a "Indicador"
+   sin descargar nada.
 
    ```js
-   { id: 'anillos-3d', nombre: 'Anillos 3D', cargar: () => import('./anillos-3d.js') },
+   { id: 'anillos-3d', nombre: 'Anillos 3D', cargar: () => import('./anillos-3d.js'), requiere: ['webgl2'] },
    ```
 
 3. **Agrégala a la caché sin conexión**: en `service-worker.js`, añade
-   `'./js/escenas/anillos-3d.js',` a la lista `ARCHIVOS`. (three.js se guarda solo
-   la primera vez que se usa con conexión.)
+   `'./js/escenas/anillos-3d.js',` a la lista `ARCHIVOS`. three.js ya se guarda al instalar
+   (lista `PRECARGA_CDN`). Si algún día cambias la versión de three en el import map de
+   `index.html`, cambia también esa URL en `PRECARGA_CDN`. No hace falta subir la versión de
+   caché a mano: cada publicación la renueva sola.
 
 4. Guarda el cambio en `main`. En un par de minutos aparece en el selector de la app.
 

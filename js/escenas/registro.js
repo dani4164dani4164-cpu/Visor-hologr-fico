@@ -30,13 +30,20 @@
        }
      };
 
+   Campos de cada entrada:
+     id, nombre  identificador y texto del selector
+     cargar      función que importa el módulo de la escena
+     requiere    (opcional) lista de capacidades: 'webgl2'. Si el
+                 dispositivo no las tiene, la app avisa y vuelve a la
+                 primera escena sin descargar nada.
+
    Para agregar una escena: crea su archivo en esta carpeta,
    añade una línea abajo y agrega la ruta al service-worker.js.
    ============================================================ */
 
 export const escenas = [
   { id: 'indicador', nombre: 'Indicador', cargar: () => import('./indicador.js') },
-  // { id: 'orbitas-3d', nombre: 'Órbitas 3D', cargar: () => import('./orbitas-3d.js') },
+  { id: 'indicador-3d', nombre: 'Indicador 3D', cargar: () => import('./indicador-3d.js'), requiere: ['webgl2'] },
 ];
 
 export function buscarEscena(id){
